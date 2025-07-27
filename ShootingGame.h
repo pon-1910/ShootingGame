@@ -18,3 +18,4 @@ struct OBJECT // 自機や敵機用
 
 // 関数プロトタイプ宣言
 // ここにプロトタイプ宣言を記述する
+void initGame(void);
