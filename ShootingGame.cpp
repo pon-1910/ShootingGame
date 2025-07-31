@@ -33,7 +33,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		ClearDrawScreen(); // 画面をクリアする
 
 		// ゲームの骨組みとなる処理を、ここに記載する
-		DrawGraph(0, 0, imgGalaxy, FALSE); // 【仮】星空を表示
+		scrollBG(1); // 【仮】背景のスクロール
 
 		ScreenFlip(); // 裏画面の内容を表画面に反映する
 		WaitTimer(1000 / FPS); // 一定時間保つ
@@ -77,4 +77,18 @@ void initGame(void)
 	ChangeVolumeSoundMem(128, bgm);
 	ChangeVolumeSoundMem(128, jinOver);
 	ChangeVolumeSoundMem(128, jinClear);
+}
+
+// 背景のスクロール
+void scrollBG(int spd)
+{
+	static int galaxyY, floorY, wallY; // スクロール位置を管理する変数(静的記憶領域に保持される)
+	galaxyY = (galaxyY + spd) % HEIGHT; // 星空（宇宙）
+	DrawGraph(0, galaxyY - HEIGHT, imgGalaxy, FALSE);
+	DrawGraph(0, galaxyY, imgGalaxy, FALSE);
+	floorY = (floorY + spd * 2) % 120; // 床
+	for (int i = -1; i < 6; i++) DrawGraph(240, floorY + i * 120, imgFloor, TRUE);
+	wallY = (wallY + spd * 4) % 240; // 左右の壁
+	DrawGraph(0, wallY - 240, imgWallL, TRUE);
+	DrawGraph(WIDTH - 300, wallY - 240, imgWallR, TRUE);
 }
