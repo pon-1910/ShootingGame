@@ -15,6 +15,8 @@ int imgExplosion; // 爆発演出の画像
 int imgItem; // アイテムの画像
 int bgm, jinOver, jinClear, seExpl, seItem, seShot; // 音の読み込み用
 
+struct OBJECT player; // 自機用の構造体変数
+
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
@@ -26,7 +28,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	SetDrawScreen(DX_SCREEN_BACK); // 描画面を裏画面にする
 
 	initGame(); // 初期化用の関数を呼び出す
-	PlaySoundMem(bgm, DX_PLAYTYPE_LOOP); // 【仮】BGMの出力
+	initVariable(); // 【仮】ゲームを完成させる際に呼び出し位置を変える
 
 	while (1) // メインループ
 	{
@@ -34,6 +36,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
 		// ゲームの骨組みとなる処理を、ここに記載する
 		scrollBG(1); // 【仮】背景のスクロール
+		movePlayer(); // 自機の操作
 
 		ScreenFlip(); // 裏画面の内容を表画面に反映する
 		WaitTimer(1000 / FPS); // 一定時間保つ
@@ -91,4 +94,43 @@ void scrollBG(int spd)
 	wallY = (wallY + spd * 4) % 240; // 左右の壁
 	DrawGraph(0, wallY - 240, imgWallL, TRUE);
 	DrawGraph(WIDTH - 300, wallY - 240, imgWallR, TRUE);
+}
+
+// ゲーム開始時の初期値を代入する関数
+void initVariable(void)
+{
+	player.x = WIDTH / 2;
+	player.y = HEIGHT / 2;
+	player.vx = 5;
+	player.vy = 5;
+}
+
+// 中心座標を指定して画像を表示する関数
+void drawImage(int img, int x, int y)
+{
+	int w, h;
+	GetGraphSize(img, &w, &h);
+	DrawGraph(x - w / 2, y - h / 2, img, TRUE);
+}
+
+// 自機を動かす関数
+void movePlayer(void)
+{
+	if (CheckHitKey(KEY_INPUT_UP)) { // 上キー
+		player.y -= player.vy;
+		if (player.y < 30) player.y = 30;
+	}
+	if (CheckHitKey(KEY_INPUT_DOWN)) { // 下キー
+		player.y += player.vy;
+		if (player.y > HEIGHT - 30) player.y = HEIGHT - 30;
+	}
+	if (CheckHitKey(KEY_INPUT_LEFT)) { // 左キー
+		player.x -= player.vx;
+		if (player.x < 30) player.x = 30;
+	}
+	if (CheckHitKey(KEY_INPUT_RIGHT)) { // 右キー
+		player.x += player.vx;
+		if (player.x > WIDTH - 30) player.x = WIDTH - 30;
+	}
+	drawImage(imgFighter, player.x, player.y); // 自機の描画
 }

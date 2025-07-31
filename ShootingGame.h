@@ -20,3 +20,6 @@ struct OBJECT // 自機や敵機用
 // ここにプロトタイプ宣言を記述する
 void initGame(void);
 void scrollBG(int spd);
+void initVariable(void);
+void drawImage(int img, int x, int y);
+void movePlayer(void);
