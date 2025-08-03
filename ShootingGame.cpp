@@ -5,6 +5,7 @@
 const int WIDTH = 1200, HEIGHT = 720; // ウィンドウの幅と高さのピクセル数
 const int FPS = 60; // フレームレート
 const int IMG_ENEMY_MAX = 5; // 敵の画像の枚数（種類）
+const int BULLET_MAX = 100; // 自機が発射する弾の最大数
 
 // グローバル変数
 // ここでゲームに用いる変数や配列を定義する
@@ -16,7 +17,7 @@ int imgItem; // アイテムの画像
 int bgm, jinOver, jinClear, seExpl, seItem, seShot; // 音の読み込み用
 
 struct OBJECT player; // 自機用の構造体変数
-
+struct OBJECT bullet[BULLET_MAX]; // 弾用の構造体の配列
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
@@ -37,6 +38,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		// ゲームの骨組みとなる処理を、ここに記載する
 		scrollBG(1); // 【仮】背景のスクロール
 		movePlayer(); // 自機の操作
+		moveBullet(); // 弾の制御
 
 		ScreenFlip(); // 裏画面の内容を表画面に反映する
 		WaitTimer(1000 / FPS); // 一定時間保つ
@@ -132,5 +134,35 @@ void movePlayer(void)
 		player.x += player.vx;
 		if (player.x > WIDTH - 30) player.x = WIDTH - 30;
 	}
+	if (CheckHitKey(KEY_INPUT_SPACE)) setBullet(); // スペースキー
 	drawImage(imgFighter, player.x, player.y); // 自機の描画
+}
+
+// 弾のセット（発射）
+void setBullet(void)
+{
+	for (int i = 0; i < BULLET_MAX; i++) {
+		if (bullet[i].state == 0) { // 空いている配列に弾をセット
+			bullet[i].x = player.x;
+			bullet[i].y = player.y - 20;
+			bullet[i].vx = 0;
+			bullet[i].vy = -40; // y軸方向の速さ（1回の計算で移動できるピクセル数）
+			bullet[i].state = 1; // 弾が存在する状態にする
+			break;
+		}
+	}
+	PlaySoundMem(seShot, DX_PLAYTYPE_BACK); // 効果音
+}
+
+// 弾の移動
+void moveBullet(void)
+{
+	for (int i = 0; i < BULLET_MAX; i++)
+	{
+		if (bullet[i].state == 0) continue; // 空いている配列なら処理しない
+		bullet[i].x += bullet[i].vx; // ┬ 座標を移動させる
+		bullet[i].y += bullet[i].vy; // ┘
+		drawImage(imgBullet, bullet[i].x, bullet[i].y); // 弾の描画
+		if (bullet[i].y < -100) bullet[i].state = 0; // 画面外に出たら存在しない状態にする
+	}
 }
