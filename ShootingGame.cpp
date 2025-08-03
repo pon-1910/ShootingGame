@@ -118,6 +118,8 @@ void drawImage(int img, int x, int y)
 // 自機を動かす関数
 void movePlayer(void)
 {
+	static char oldSpcKey; // 1つ前のスペースキーの状態を保持する変数
+	static int countSpcKey; // スペースキーを押し続けている間、カウントアップする変数
 	if (CheckHitKey(KEY_INPUT_UP)) { // 上キー
 		player.y -= player.vy;
 		if (player.y < 30) player.y = 30;
@@ -134,7 +136,15 @@ void movePlayer(void)
 		player.x += player.vx;
 		if (player.x > WIDTH - 30) player.x = WIDTH - 30;
 	}
-	if (CheckHitKey(KEY_INPUT_SPACE)) setBullet(); // スペースキー
+	if (CheckHitKey(KEY_INPUT_SPACE)) { // スペースキー
+		if (oldSpcKey == 0) setBullet(); // 押した瞬間、発射
+		else if (countSpcKey % 20 == 0) setBullet(); // 一定間隔で発射
+		countSpcKey++;
+	}
+	else {
+		countSpcKey = 0;
+	}
+	oldSpcKey = CheckHitKey(KEY_INPUT_SPACE); // スペースキーの状態を保存
 	drawImage(imgFighter, player.x, player.y); // 自機の描画
 }
 
