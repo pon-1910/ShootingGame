@@ -6,6 +6,9 @@ const int WIDTH = 1200, HEIGHT = 720; // ウィンドウの幅と高さのピクセル数
 const int FPS = 60; // フレームレート
 const int IMG_ENEMY_MAX = 5; // 敵の画像の枚数（種類）
 const int BULLET_MAX = 100; // 自機が発射する弾の最大数
+const int ENEMY_MAX = 100; // 敵機の数の最大値
+const int STAGE_DISTANCE = FPS * 60; // ステージの長さ
+enum { ENE_BULLET, ENE_ZAKO1, ENE_ZAKO2, ENE_ZAKO3, ENE_BOSS }; // 敵機の種類
 
 // グローバル変数
 // ここでゲームに用いる変数や配列を定義する
@@ -15,9 +18,11 @@ int imgEnemy[IMG_ENEMY_MAX]; // 敵機の画像
 int imgExplosion; // 爆発演出の画像
 int imgItem; // アイテムの画像
 int bgm, jinOver, jinClear, seExpl, seItem, seShot; // 音の読み込み用
+int distance = 0; // ステージ終端までの距離
 
 struct OBJECT player; // 自機用の構造体変数
 struct OBJECT bullet[BULLET_MAX]; // 弾用の構造体の配列
+struct OBJECT enemy[ENEMY_MAX]; // 敵機用の構造体の配列
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
@@ -30,6 +35,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
 	initGame(); // 初期化用の関数を呼び出す
 	initVariable(); // 【仮】ゲームを完成させる際に呼び出し位置を変える
+	distance = STAGE_DISTANCE; // 【記述位置は仮】ステージの長さを代入
 
 	while (1) // メインループ
 	{
@@ -37,6 +43,22 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
 		// ゲームの骨組みとなる処理を、ここに記載する
 		scrollBG(1); // 【仮】背景のスクロール
+		if (distance > 0) distance--; // 距離の計算
+		DrawFormatString(0, 0, 0xffff00, "distance=%d", distance); // 【仮】確認用
+		if (distance % 60 == 1) // 【仮】ザコ敵の出現
+		{
+			int x = 100 + rand() % (WIDTH - 200); // 出現位置　x座標
+			int y = -50;						  // 出現位置　y座標
+			int e = 1 + rand() % 2; // 出現するザコ機の種類
+			if (e == ENE_ZAKO1) setEnemy(x, y, 0, 3, ENE_ZAKO1, imgEnemy[ENE_ZAKO1], 1);
+			if (e == ENE_ZAKO2) {
+				int vx = 0;
+				if (player.x < x - 50) vx = -3;
+				if (player.x > x + 50) vx = 3;
+				setEnemy(x, -100, vx, 5, ENE_ZAKO2, imgEnemy[ENE_ZAKO2], 3);
+			}
+		}
+		moveEnemy(); // 敵機の制御
 		movePlayer(); // 自機の操作
 		moveBullet(); // 弾の制御
 
@@ -174,5 +196,39 @@ void moveBullet(void)
 		bullet[i].y += bullet[i].vy; // ┘
 		drawImage(imgBullet, bullet[i].x, bullet[i].y); // 弾の描画
 		if (bullet[i].y < -100) bullet[i].state = 0; // 画面外に出たら存在しない状態にする
+	}
+}
+
+// 敵機をセットする
+int setEnemy(int x, int y, int vx, int vy, int ptn, int img, int sld)
+{
+	for (int i = 0; i < ENEMY_MAX; i++) {
+		if (enemy[i].state == 0) {
+			enemy[i].x = x;
+			enemy[i].y = y;
+			enemy[i].vx = vx;
+			enemy[i].vy = vy;
+			enemy[i].state = 1;
+			enemy[i].pattern = ptn;
+			enemy[i].image = img;
+			// enemy[i].shield = sld * stage; // ステージが進むほど敵が固くなる
+			// GetGraphSize(img, &enemy[i].wid, &enemy[i].hei); // 画像の幅と高さを代入
+			return i;
+		}
+	}
+	return -1;
+}
+
+// 敵機を動かす
+void moveEnemy(void)
+{
+	for (int i = 0; i < ENEMY_MAX; i++)
+	{
+		if (enemy[i].state == 0) continue; // 空いている配列なら処理しない
+		enemy[i].x += enemy[i].vx; // ┬ 敵機の移動
+		enemy[i].y += enemy[i].vy; // ┘
+		drawImage(enemy[i].image, enemy[i].x, enemy[i].y); // 敵機の描画
+		// 画面外に出たか？
+		if (enemy[i].x < -200 || WIDTH + 200 < enemy[i].x || enemy[i].y < -200 || HEIGHT + 200 < enemy[i].y) enemy[i].state = 0;
 	}
 }
