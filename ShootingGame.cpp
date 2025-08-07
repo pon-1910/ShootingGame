@@ -19,6 +19,7 @@ int imgExplosion; // 爆発演出の画像
 int imgItem; // アイテムの画像
 int bgm, jinOver, jinClear, seExpl, seItem, seShot; // 音の読み込み用
 int distance = 0; // ステージ終端までの距離
+int bossIdx = 0; // ボスを代入した配列のインデックス
 
 struct OBJECT player; // 自機用の構造体変数
 struct OBJECT bullet[BULLET_MAX]; // 弾用の構造体の配列
@@ -58,9 +59,16 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 				setEnemy(x, -100, vx, 5, ENE_ZAKO2, imgEnemy[ENE_ZAKO2], 3);
 			}
 		}
+		if (distance % 120 == 1) // 【仮】ザコ敵3 の出現
+		{
+			int x = 100 + rand() % (WIDTH - 200); // 出現位置 x座標
+			setEnemy(x, -100, 0, 40 + rand() % 20, ENE_ZAKO3, imgEnemy[ENE_ZAKO3], 5);
+		}
+		if (distance == 1) bossIdx = setEnemy(WIDTH / 2, -120, 0, 1, ENE_BOSS, imgEnemy[ENE_BOSS], 200); // ボス出現
 		moveEnemy(); // 敵機の制御
 		movePlayer(); // 自機の操作
 		moveBullet(); // 弾の制御
+		stageMap(); // ステージマップ
 
 		ScreenFlip(); // 裏画面の内容を表画面に反映する
 		WaitTimer(1000 / FPS); // 一定時間保つ
@@ -222,13 +230,55 @@ int setEnemy(int x, int y, int vx, int vy, int ptn, int img, int sld)
 // 敵機を動かす
 void moveEnemy(void)
 {
-	for (int i = 0; i < ENEMY_MAX; i++)
-	{
+	for (int i = 0; i < ENEMY_MAX; i++) {
 		if (enemy[i].state == 0) continue; // 空いている配列なら処理しない
+		if (enemy[i].pattern == ENE_ZAKO3) // ザコ機3
+		{
+			if (enemy[i].vy > 1) // 減速
+			{
+				enemy[i].vy *= 0.9;
+			}
+			else if (enemy[i].vy > 0) // 弾発射、飛び去る
+			{
+				setEnemy(enemy[i].x, enemy[i].y, 0, 6, ENE_BULLET, imgEnemy[ENE_BULLET], 0); // 弾
+				enemy[i].vx = 8;
+				enemy[i].vy = -4;
+			}
+		}
+		if (enemy[i].pattern == ENE_BOSS) // ボス機
+		{
+			if (enemy[i].y > HEIGHT - 120) enemy[i].vy = -2;
+			if (enemy[i].y < 120) // 画面上端
+			{
+				if (enemy[i].vy < 0) // 弾発射
+				{
+					for (int bx = -2; bx <= 2; bx++) // 二重ループの for
+						for (int by = 0; by <= 3; by++)
+						{
+							if (bx == 0 && by == 0) continue;
+							setEnemy(enemy[i].x, enemy[i].y, bx * 2, by * 3, ENE_BULLET, imgEnemy[ENE_BULLET], 0);
+						}
+				}
+				enemy[i].vy = 2;
+			}
+		}
 		enemy[i].x += enemy[i].vx; // ┬ 敵機の移動
 		enemy[i].y += enemy[i].vy; // ┘
 		drawImage(enemy[i].image, enemy[i].x, enemy[i].y); // 敵機の描画
 		// 画面外に出たか？
 		if (enemy[i].x < -200 || WIDTH + 200 < enemy[i].x || enemy[i].y < -200 || HEIGHT + 200 < enemy[i].y) enemy[i].state = 0;
 	}
+}
+
+// ステージマップ
+void stageMap(void)
+{
+	int mx = WIDTH - 30, my = 60; // マップの表示位置
+	int wi = 20, he = HEIGHT - 120; // マップの幅、高さ
+	int pos = (HEIGHT - 140) * distance / STAGE_DISTANCE; // 自機の飛行している位置
+	SetDrawBlendMode(DX_BLENDMODE_SUB, 128); // 減算による描画の重ね合わせ
+	DrawBox(mx, my, mx + wi + 1, my + he, 0xffffff, TRUE);
+	SetDrawBlendMode(DX_BLENDMODE_NOBLEND, 0); // ブレンドモードを解除
+	DrawBox(mx-1, my-1, mx + wi + 1, my + he + 1, 0xffffff, FALSE); // 枠線
+	DrawBox(mx, my + pos, mx + wi, my + pos + 20, 0x0080ff, TRUE); // 自機の位置
 }
