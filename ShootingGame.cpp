@@ -1,5 +1,6 @@
 #include "DxLib.h"
 #include "ShootingGame.h" // ヘッダーファイルをインクルード
+#include <stdlib.h>
 
 // 定数の定義
 const int WIDTH = 1200, HEIGHT = 720; // ウィンドウの幅と高さのピクセル数
@@ -20,6 +21,9 @@ int imgItem; // アイテムの画像
 int bgm, jinOver, jinClear, seExpl, seItem, seShot; // 音の読み込み用
 int distance = 0; // ステージ終端までの距離
 int bossIdx = 0; // ボスを代入した配列のインデックス
+int stage = 1; // ステージ
+int score = 0; // スコア
+int hisco = 10000; // ハイスコア
 
 struct OBJECT player; // 自機用の構造体変数
 struct OBJECT bullet[BULLET_MAX]; // 弾用の構造体の配列
@@ -45,7 +49,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		// ゲームの骨組みとなる処理を、ここに記載する
 		scrollBG(1); // 【仮】背景のスクロール
 		if (distance > 0) distance--; // 距離の計算
-		DrawFormatString(0, 0, 0xffff00, "distance=%d", distance); // 【仮】確認用
+		DrawFormatString(0, 0, 0xffff00, "SCORE %d HI-SCO %d", score, hisco); // 【仮】確認用
 		if (distance % 60 == 1) // 【仮】ザコ敵の出現
 		{
 			int x = 100 + rand() % (WIDTH - 200); // 出現位置　x座標
@@ -219,8 +223,8 @@ int setEnemy(int x, int y, int vx, int vy, int ptn, int img, int sld)
 			enemy[i].state = 1;
 			enemy[i].pattern = ptn;
 			enemy[i].image = img;
-			// enemy[i].shield = sld * stage; // ステージが進むほど敵が固くなる
-			// GetGraphSize(img, &enemy[i].wid, &enemy[i].hei); // 画像の幅と高さを代入
+			enemy[i].shield = sld * stage; // ステージが進むほど敵が固くなる
+			GetGraphSize(img, &enemy[i].wid, &enemy[i].hei); // 画像の幅と高さを代入
 			return i;
 		}
 	}
@@ -267,6 +271,21 @@ void moveEnemy(void)
 		drawImage(enemy[i].image, enemy[i].x, enemy[i].y); // 敵機の描画
 		// 画面外に出たか？
 		if (enemy[i].x < -200 || WIDTH + 200 < enemy[i].x || enemy[i].y < -200 || HEIGHT + 200 < enemy[i].y) enemy[i].state = 0;
+		// 当たり判定のアルゴリズム
+		if (enemy[i].shield > 0) // ヒットチェックを行う敵機（弾以外）
+		{
+			for (int j = 0; j < BULLET_MAX; j++) { // 自機の弾とヒットチェック
+				if (bullet[j].state == 0) continue;
+				int dx = abs((int)(enemy[i].x - bullet[j].x)); // ┬中心座標間のピクセル数
+				int dy = abs((int)(enemy[i].y - bullet[j].y)); // ┘
+				if (dx < enemy[i].wid / 2 && dy < enemy[i].hei / 2) // 接触しているか
+				{
+					bullet[j].state = 0; // 弾を消す
+					damageEnemy(i, 1); // 敵機にダメージ
+				}
+			}
+
+		}
 	}
 }
 
@@ -281,4 +300,19 @@ void stageMap(void)
 	SetDrawBlendMode(DX_BLENDMODE_NOBLEND, 0); // ブレンドモードを解除
 	DrawBox(mx-1, my-1, mx + wi + 1, my + he + 1, 0xffffff, FALSE); // 枠線
 	DrawBox(mx, my + pos, mx + wi, my + pos + 20, 0x0080ff, TRUE); // 自機の位置
+}
+
+// 敵機のシールドを減らす（ダメージを与える）
+void damageEnemy(int n, int dmg)
+{
+	SetDrawBlendMode(DX_BLENDMODE_ADD, 192); // 加算による描画の重ね合わせ
+	DrawCircle(enemy[n].x, enemy[n].y, (enemy[n].wid + enemy[n].hei) / 4, 0xff0000, TRUE);
+	SetDrawBlendMode(DX_BLENDMODE_NOBLEND, 0); // ブレンドモードを解除
+	score += 100; // スコアの加算
+	if (score > hisco) hisco = score; // ハイスコアの更新
+	enemy[n].shield -= dmg; // シールドを減らす
+	if (enemy[n].shield <= 0)
+	{
+		enemy[n].state = 0; // シールド0以下で消す
+	}
 }
