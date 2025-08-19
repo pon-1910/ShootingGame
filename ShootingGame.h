@@ -29,3 +29,5 @@ int setEnemy(int x, int y, int vx, int vy, int ptn, int img, int sld);
 void moveEnemy(void);
 void stageMap(void);
 void damageEnemy(int n, int dmg);
+void drawText(int x, int y, const char* txt, int val, int col, int siz);
+void drawParameter(void);

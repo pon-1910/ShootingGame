@@ -9,6 +9,7 @@ const int IMG_ENEMY_MAX = 5; // 敵の画像の枚数（種類）
 const int BULLET_MAX = 100; // 自機が発射する弾の最大数
 const int ENEMY_MAX = 100; // 敵機の数の最大値
 const int STAGE_DISTANCE = FPS * 60; // ステージの長さ
+const int PLAYER_SHIELD_MAX = 8; // 自機のシールドの最大値
 enum { ENE_BULLET, ENE_ZAKO1, ENE_ZAKO2, ENE_ZAKO3, ENE_BOSS }; // 敵機の種類
 
 // グローバル変数
@@ -24,6 +25,7 @@ int bossIdx = 0; // ボスを代入した配列のインデックス
 int stage = 1; // ステージ
 int score = 0; // スコア
 int hisco = 10000; // ハイスコア
+int noDamage = 0; // 無敵状態
 
 struct OBJECT player; // 自機用の構造体変数
 struct OBJECT bullet[BULLET_MAX]; // 弾用の構造体の配列
@@ -73,6 +75,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		movePlayer(); // 自機の操作
 		moveBullet(); // 弾の制御
 		stageMap(); // ステージマップ
+		drawParameter(); // 自機のシールドなどのパラメーターを表示
 
 		ScreenFlip(); // 裏画面の内容を表画面に反映する
 		WaitTimer(1000 / FPS); // 一定時間保つ
@@ -139,6 +142,8 @@ void initVariable(void)
 	player.y = HEIGHT / 2;
 	player.vx = 5;
 	player.vy = 5;
+	player.shield = PLAYER_SHIELD_MAX;
+	GetGraphSize(imgFighter, &player.wid, &player.hei); // 自機の画像の幅と高さを代入
 }
 
 // 中心座標を指定して画像を表示する関数
@@ -179,7 +184,8 @@ void movePlayer(void)
 		countSpcKey = 0;
 	}
 	oldSpcKey = CheckHitKey(KEY_INPUT_SPACE); // スペースキーの状態を保存
-	drawImage(imgFighter, player.x, player.y); // 自機の描画
+	if (noDamage > 0) noDamage--; // 無敵時間のカウント
+	if (noDamage % 4 < 2) drawImage(imgFighter, player.x, player.y); // 自機の描画
 }
 
 // 弾のセット（発射）
@@ -284,7 +290,17 @@ void moveEnemy(void)
 					damageEnemy(i, 1); // 敵機にダメージ
 				}
 			}
-
+		}
+		if (noDamage == 0) // 無敵状態でない時、実機とヒットチェック
+		{
+			int dx = abs(enemy[i].x - player.x); // ┬中心座標間のピクセル数
+			int dy = abs(enemy[i].y - player.y); // ┘
+			if (dx < enemy[i].wid / 2 + player.wid / 2 && dy < enemy[i].hei / 2 + player.hei / 2)
+			{
+				if (player.shield > 0) player.shield--; // シールドを減らす
+				noDamage = FPS; // 無敵状態をセット
+				damageEnemy(i, 1); // 敵にダメージ
+			}
 		}
 	}
 }
@@ -315,4 +331,27 @@ void damageEnemy(int n, int dmg)
 	{
 		enemy[n].state = 0; // シールド0以下で消す
 	}
+}
+
+// 影を付けた文字列を値を表示する関数
+void drawText(int x, int y, const char* txt, int val, int col, int siz)
+{
+	SetFontSize(siz); // フォントの大きさを指定
+	DrawFormatString(x + 1, y + 1, 0x000000, txt, val); // 黒で文字列を表示
+	DrawFormatString(x, y, col, txt, val); // 引数の色で文字列を表示
+}
+
+// 自機に関するパラメーターを表示
+void drawParameter(void)
+{
+	int x = 10, y = HEIGHT - 30; // 表示位置
+	DrawBox(x, y, x + PLAYER_SHIELD_MAX * 30, y + 20, 0x000000, TRUE);
+	for (int i = 0; i < player.shield; i++) // シールドのメーター
+	{
+		int r = 128 * (PLAYER_SHIELD_MAX - i) / PLAYER_SHIELD_MAX; // RGB値を計算
+		int g = 255 * i / PLAYER_SHIELD_MAX;
+		int b = 160 + 96 * i / PLAYER_SHIELD_MAX;
+		DrawBox(x + 2 + i * 30, y + 2, x + 28 + i * 30, y + 18, GetColor(r, g, b), TRUE);
+	}
+	drawText(x, y -25, "SHIELD Lv %02d", player.shield, 0xffffff, 20); // シールド値
 }
