@@ -10,7 +10,9 @@ const int BULLET_MAX = 100; // 自機が発射する弾の最大数
 const int ENEMY_MAX = 100; // 敵機の数の最大値
 const int STAGE_DISTANCE = FPS * 60; // ステージの長さ
 const int PLAYER_SHIELD_MAX = 8; // 自機のシールドの最大値
+const int EFFECT_MAX = 100; // エフェクトの最大数
 enum { ENE_BULLET, ENE_ZAKO1, ENE_ZAKO2, ENE_ZAKO3, ENE_BOSS }; // 敵機の種類
+enum { EFF_EXPLODE, EFF_RECOVER }; // エフェクトの種類
 
 // グローバル変数
 // ここでゲームに用いる変数や配列を定義する
@@ -30,6 +32,7 @@ int noDamage = 0; // 無敵状態
 struct OBJECT player; // 自機用の構造体変数
 struct OBJECT bullet[BULLET_MAX]; // 弾用の構造体の配列
 struct OBJECT enemy[ENEMY_MAX]; // 敵機用の構造体の配列
+struct OBJECT effect[EFFECT_MAX]; // エフェクト用の構造体の配列
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
@@ -74,6 +77,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		moveEnemy(); // 敵機の制御
 		movePlayer(); // 自機の操作
 		moveBullet(); // 弾の制御
+		drawEffect(); // エフェクト
 		stageMap(); // ステージマップ
 		drawParameter(); // 自機のシールドなどのパラメーターを表示
 
@@ -330,6 +334,7 @@ void damageEnemy(int n, int dmg)
 	if (enemy[n].shield <= 0)
 	{
 		enemy[n].state = 0; // シールド0以下で消す
+		setEffect(enemy[n].x, enemy[n].y, EFF_EXPLODE); // 爆発演出
 	}
 }
 
@@ -354,4 +359,40 @@ void drawParameter(void)
 		DrawBox(x + 2 + i * 30, y + 2, x + 28 + i * 30, y + 18, GetColor(r, g, b), TRUE);
 	}
 	drawText(x, y -25, "SHIELD Lv %02d", player.shield, 0xffffff, 20); // シールド値
+}
+
+// エフェクトのセット
+void setEffect(int x, int y, int ptn)
+{
+	static int eff_num;
+	effect[eff_num].x = x;
+	effect[eff_num].y = y;
+	effect[eff_num].state = 1;
+	effect[eff_num].pattern = ptn;
+	effect[eff_num].timer = 0;
+	eff_num = (eff_num + 1) % EFFECT_MAX;
+	if (ptn == EFF_EXPLODE) PlaySoundMem(seExpl, DX_PLAYTYPE_BACK); // 効果音
+}
+
+// エフェクトの描画
+void drawEffect(void)
+{
+	int ix;
+	for (int i = 0; i < EFFECT_MAX; i++)
+	{
+		if (effect[i].state == 0) continue;
+		switch (effect[i].pattern) // エフェクトごとに処理を分ける
+		{
+		case EFF_EXPLODE: // 爆発演出
+			ix = effect[i].timer * 128; // 画像の切り出し位置
+			DrawRectGraph(effect[i].x - 64, effect[i].y - 64, ix, 0, 128, 128, imgExplosion, TRUE, FALSE);
+			effect[i].timer++;
+			if (effect[i].timer == 7) effect[i].state = 0;
+			break;
+
+		case EFF_RECOVER: // 回復演出
+			// アイテムを組み込む時に追記
+			break;
+		}
+	}
 }
