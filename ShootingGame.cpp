@@ -202,14 +202,13 @@ void movePlayer(void)
 // 弾のセット（発射）
 void setBullet(void)
 {
-	for (int n = 0; n < weaponLv; n++)
-	{
+	for (int n = 0; n < weaponLv; n++) {
 		int x = player.x - (weaponLv - 1) * 5 + n * 10;
 		int y = player.y - 20;
 		for (int i = 0; i < BULLET_MAX; i++) {
 			if (bullet[i].state == 0) { // 空いている配列に弾をセット
-				bullet[i].x = player.x;
-				bullet[i].y = player.y - 20;
+				bullet[i].x = x;
+				bullet[i].y = y;
 				bullet[i].vx = 0;
 				bullet[i].vy = -40; // y軸方向の速さ（1回の計算で移動できるピクセル数）
 				bullet[i].state = 1; // 弾が存在する状態にする
@@ -405,8 +404,66 @@ void drawEffect(void)
 			break;
 
 		case EFF_RECOVER: // 回復演出
-			// アイテムを組み込む時に追記
+			if (effect[i].timer < 30) // 加算による描画の重ね合わせ
+				SetDrawBlendMode(DX_BLENDMODE_ADD, effect[i].timer*8);
+			else
+				SetDrawBlendMode(DX_BLENDMODE_ADD, (60 - effect[i].timer) * 8);
+			for (int i = 3; i < 8; i++) DrawCircle(player.x, player.y, (player.wid + player.hei) / i, 0x2040c0, TRUE);
+			SetDrawBlendMode(DX_BLENDMODE_NOBLEND, 0); // ブレンドモードを解除
+			effect[i].timer++;
+			if (effect[i].timer == 60) effect[i].state = 0;
 			break;
 		}
+	}
+}
+
+// アイテムをセット
+void setItem(void)
+{
+	item.x = (WIDTH / 4) * (1 + rand() % 3);
+	item.y = -16;
+	item.vx = 15;
+	item.vy = 1;
+	item.state = 1;
+	item.timer = 0;
+}
+
+// アイテムの処理
+void moveItem(void)
+{
+	if (item.state == 0) return;
+	item.x += item.vx;
+	item.y += item.vy;
+	if (item.timer % 60 < 30)
+		item.vx -= 1;
+	else
+		item.vx += 1;
+	if (item.y > HEIGHT + 16) item.state = 0;
+	item.pattern = (item.timer / 120) % ITEM_TYPE; // 現在、どのアイテムになっているか
+	item.timer++;
+	DrawRectGraph(item.x - 20, item.y - 16, item.pattern * 40, 0, 40, 32, imgItem, TRUE, FALSE);
+	// if (scene == OVER) return; // ゲームオーバー画面では回収できない
+	int dis = (item.x - player.x) * (item.x - player.x) + (item.y - player.y) * (item.y - player.y);
+	if (dis < 60 * 60) // アイテムと自機とのヒットチェック（円による当たり判定）
+	{
+		item.state = 0;
+		if (item.pattern == 0) // スピードアップ
+		{
+			if (player.vx < PLAYER_SPEED_MAX)
+			{
+				player.vx += 3;
+				player.vy += 3;
+			}
+		}
+		if (item.pattern == 1) // シールド回復
+		{
+			if (player.shield < PLAYER_SHIELD_MAX) player.shield++;
+			setEffect(player.x, player.y, EFF_RECOVER); // 回復エフェクトを表示
+		}
+		if (item.pattern == 2) // 武器レベルアップ
+		{
+			if (weaponLv < WEAPON_LV_MAX) weaponLv++;
+		}
+		PlaySoundMem(seItem, DX_PLAYTYPE_BACK); // 効果音
 	}
 }
