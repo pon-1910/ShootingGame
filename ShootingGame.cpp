@@ -16,6 +16,7 @@ const int WEAPON_LV_MAX = 3; // 武器レベルの最大値
 const int PLAYER_SPEED_MAX = 20; // 自機の速さの最大値
 enum { ENE_BULLET, ENE_ZAKO1, ENE_ZAKO2, ENE_ZAKO3, ENE_BOSS }; // 敵機の種類
 enum { EFF_EXPLODE, EFF_RECOVER }; // エフェクトの種類
+enum { TITLE, PLAY, OVER, CLEAR }; // シーンを分けるための列挙定数
 
 // グローバル変数
 // ここでゲームに用いる変数や配列を定義する
@@ -32,6 +33,8 @@ int score = 0; // スコア
 int hisco = 10000; // ハイスコア
 int noDamage = 0; // 無敵状態
 int weaponLv = 1; // 自機の武器のレベル（同時に発射される弾数）
+int scene = TITLE; // シーンを管理
+int timer = 0; // 時間の進行を管理
 
 struct OBJECT player; // 自機用の構造体変数
 struct OBJECT bullet[BULLET_MAX]; // 弾用の構造体の配列
@@ -57,7 +60,33 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		ClearDrawScreen(); // 画面をクリアする
 
 		// ゲームの骨組みとなる処理を、ここに記載する
-		scrollBG(1); // 【仮】背景のスクロール
+		int spd = 1; // スクロールの速さ
+		if (scene == PLAY && distance == 0) spd = 0; // ボス戦はスクロール停止
+		scrollBG(spd); // 背景のスクロール
+		moveEnemy(); // 敵機の制御
+		moveBullet(); // 弾の制御
+		moveItem(); // アイテムの制御
+		drawEffect(); // エフェクト
+		stageMap(); // ステージマップ
+		drawParameter(); // 自機のシールドなどのパラメーターを表示
+
+		timer++; // タイマーをカウント
+		switch (scene) // シーンごとに処理を分岐
+		{
+		case TITLE: // タイトル画面
+			drawTextC(WIDTH * 0.5, HEIGHT * 0.3, "Shooting Game", 0xffffff, 80);
+			drawTextC(WIDTH * 0.5, HEIGHT * 0.7, "Press SPACE to start", 0xffffff, 30);
+			if (CheckHitKey(KEY_INPUT_SPACE))
+			{
+				initVariable();
+				scene = PLAY;
+			}
+			break;
+		case PLAY: // ゲームプレイ画面
+			movePlayer(); // 自機の操作
+		}
+		/* ↑ここまで変更済み↑ */
+
 		if (distance > 0) distance--; // 距離の計算
 		DrawFormatString(0, 0, 0xffff00, "SCORE %d HI-SCO %d", score, hisco); // 【仮】確認用
 		if (distance % 60 == 1) // 【仮】ザコ敵の出現
@@ -80,13 +109,6 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		}
 		if (distance == 1) bossIdx = setEnemy(WIDTH / 2, -120, 0, 1, ENE_BOSS, imgEnemy[ENE_BOSS], 200); // ボス出現
 		if (distance % 800 == 1) setItem(); // アイテムの出現
-		moveEnemy(); // 敵機の制御
-		movePlayer(); // 自機の操作
-		moveBullet(); // 弾の制御
-		moveItem(); // アイテムの制御
-		drawEffect(); // エフェクト
-		stageMap(); // ステージマップ
-		drawParameter(); // 自機のシールドなどのパラメーターを表示
 
 		ScreenFlip(); // 裏画面の内容を表画面に反映する
 		WaitTimer(1000 / FPS); // 一定時間保つ
